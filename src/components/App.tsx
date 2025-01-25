@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { saveConfig, loadConfig } from "../utils/configUtils";
+import { saveSrt,saveASSrt } from "../utils/srtUtils";
 import { Subtitle } from "./types"; // Define and import the Subtitle type
 
 import { parseSRT } from "../utils/srtParser";
@@ -10,43 +10,38 @@ import VideoPlayer from "./VideoPlayer";
 const App: React.FC = () => {
     const [subtitles, setSubtitles] = useState<Subtitle[]>([]); // Explicit type
     const [videoFile, setVideoFile] = useState<File | null>(null);
-    const [loadedConfig, setLoadedConfig] = useState<string | null>(null);
     const [previewTime, setPreviewTime] = useState<{ start: number; end: number } | null>(null);
+    const [srtFileName, setSrtFileName] = useState<string | null>(null); // New state for SRT file name
+    const [srtFilePath, setSrtFilePath] = useState<string | null>(null);
 
     const handleImportSRT = (file: File) => {
         const reader = new FileReader();
         reader.onload = (event) => {
             const srtContent = event.target?.result as string;
             const parsedSubtitles = parseSRT(srtContent);
-            // @ts-ignore
             setSubtitles(parsedSubtitles);
-            setLoadedConfig(null);
+            setSrtFileName(file.name); // Save the SRT file name
         };
         reader.readAsText(file);
     };
 
-    const handleSaveConfig = () => {
-        const config = { videoFile: videoFile?.name || "", subtitles };
-        saveConfig(config, loadedConfig || "config.json");
+    const handleSaveSRT = () => {
+        if (srtFileName === undefined){
+            saveASSrt(subtitles, "subtitle.srt")
+        }
+        saveSrt(subtitles, srtFileName || "subtitle.srt");
+    }
+
+    const handleSaveAsSRT = async () => {
+        saveASSrt(subtitles, srtFileName || "subtitle.srt");
     };
 
-    const handleLoadConfig = async (file: File) => {
-        try {
-            const config = await loadConfig(file);
-            setSubtitles(config.subtitles || []);
-            setVideoFile(config.videoFile ? new File([], config.videoFile) : null);
-            setLoadedConfig(file.name);
-        } catch (error) {
-            // @ts-ignore
-            alert(error.message);
-        }
-    };
+
 
     return (
         <div className="min-h-screen bg-gray-100 p-6">
             <header className="flex justify-between items-center mb-4">
-                <h1 className="text-3xl font-bold">Video Editor</h1>
-                <div className="space-x-4">
+                <h1 className="text-3xl font-bold">{srtFileName ? `SRT File: ${srtFileName}` : "Select an SRT file"}</h1>                <div className="space-x-4">
                     <input
                         type="file"
                         accept=".srt"
@@ -60,24 +55,19 @@ const App: React.FC = () => {
                     >
                         Import SRT
                     </label>
-                    <input
-                        type="file"
-                        accept=".json"
-                        onChange={(e) => handleLoadConfig(e.target.files?.[0]!)}
-                        className="hidden"
-                        id="configFileInput"
-                    />
-                    <label
-                        htmlFor="configFileInput"
-                        className="bg-purple-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-purple-600"
-                    >
-                        Load Config
-                    </label>
+
+                    {/*<button*/}
+                    {/*    onClick={handleSaveSRT}*/}
+                    {/*    className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"*/}
+                    {/*>*/}
+                    {/*    Save Srt*/}
+                    {/*</button>*/}
+
                     <button
-                        onClick={handleSaveConfig}
+                        onClick={handleSaveAsSRT}
                         className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
                     >
-                        Save Config
+                        Save As Srt
                     </button>
                 </div>
             </header>
@@ -100,9 +90,6 @@ const App: React.FC = () => {
                 </section>
             </main>
 
-            <footer className="mt-6 text-gray-500 text-center">
-                {loadedConfig ? `Loaded Config: ${loadedConfig}` : "No Config Loaded"}
-            </footer>
         </div>
     );
 };
